@@ -30,14 +30,12 @@ inline void __cudaSafeCall(cudaError err, const char* file, const int line)
 
 // mode single address
 
-__global__ void compute_keys_comp_mode_sa(uint32_t mode, uint32_t* hash160, uint64_t* keys, uint32_t maxFound, uint32_t* found)
+__global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* keys, uint32_t maxFound, uint32_t* found)
 {
 	int xPtr = (blockIdx.x * blockDim.x) * 8;
 	int yPtr = xPtr + 4 * blockDim.x;
 
-	// printf("hiiu==computr_keys_comp_mode_sa -- gpuengine.cu------\n"); //result : much
-
-	ComputeKeysSEARCH_MODE_SA(mode, keys + xPtr, keys + yPtr, hash160, maxFound, found);
+	ComputeKeysSEARCH_MODE_SA(keys + xPtr, keys + yPtr, hash160, maxFound, found);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -85,14 +83,10 @@ int _ConvertSMVer2Cores(int major, int minor)
 
 // ----------------------------------------------------------------------------
 
-GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, int gpuId, uint32_t maxFound,
-	int searchMode, int compMode, int coinType, const uint32_t* hashORxpoint)
+GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, int gpuId, uint32_t maxFound, const uint32_t* hashORxpoint)
 {
 	// Initialise CUDA
 	this->nbThreadPerGroup = nbThreadPerGroup;
-	this->searchMode = searchMode;
-	this->compMode = compMode;
-	this->coinType = coinType;
 
 	initialised = false;
 
@@ -152,7 +146,6 @@ GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, i
 
 	CudaSafeCall(cudaGetLastError());
 
-	compMode = SEARCH_COMPRESSED;
 	initialised = true;
 
 }
@@ -294,11 +287,7 @@ bool GPUEngine::callKernelSEARCH_MODE_SA()
 	// Reset nbFound
 	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
 
-	// printf("hiiu----nbThread/nbThreadPerGroup---:%d\n", nbThread / nbThreadPerGroup);
-	// printf("hiiu----nbThreadPerGroup---:%d\n", nbThreadPerGroup);
-
-	compute_keys_comp_mode_sa << < nbThread / nbThreadPerGroup, nbThreadPerGroup >> >
-				(compMode, inputHashORxpoint, inputKey, maxFound, outputBuffer);
+	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);
 
 	return true;
 
@@ -306,8 +295,7 @@ bool GPUEngine::callKernelSEARCH_MODE_SA()
 
 bool GPUEngine::SetKeys(Point* p)
 {
-	// Sets the starting keys for each thread
-	// p must contains nbThread public keys
+	// Sets the starting keys for each thread	// p must contains nbThread public keys
 	for (int i = 0; i < nbThread; i += nbThreadPerGroup) {
 		for (int j = 0; j < nbThreadPerGroup; j++) {
 
@@ -328,7 +316,7 @@ bool GPUEngine::SetKeys(Point* p)
 
 	CudaSafeCall(cudaFreeHost(inputKeyPinned));
 	inputKeyPinned = NULL;
-	// printf("hiiu-----GPUEngine::setkey------\n");
+
 	return callKernelSEARCH_MODE_SA();
 
 }
@@ -362,12 +350,12 @@ bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound, bool spinWait
 		it.thId = itemPtr[0];
 		int16_t* ptr = (int16_t*)&(itemPtr[1]);
 		//it.endo = ptr[0] & 0x7FFF;
-		it.mode = (ptr[0] & 0x8000) != 0;
+		// it.mode = (ptr[0] & 0x8000) != 0;
 		it.incr = ptr[1];
 		it.hash = (uint8_t*)(itemPtr + 2);
 		dataFound.push_back(it);
 	}
-	// printf("hiiu-----GPUEngine::LaunchSEARCH_MODE_SA------\n");
+
 	return callKernelSEARCH_MODE_SA();
 }
 

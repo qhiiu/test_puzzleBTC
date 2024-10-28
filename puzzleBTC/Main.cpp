@@ -388,7 +388,7 @@ def run_python(P, xN):
     print("priv_dec    :", priv_dec ,"---------->", (priv_dec - h_s) / (h_e - h_s) * 100 ,' %' )
     #print("rangee : ", rangee)
     #print()
-
+ 
 
     # check DATA + create list priv_dec into array
     priv_dec__copy = priv_dec
@@ -452,7 +452,6 @@ void run(){
 
 	bool gpuEnable = true;
 	bool gpuAutoGrid = true;
-	int compMode = SEARCH_COMPRESSED;
 	vector<int> gpuId = { 0 };
 	// vector<int> gpuId;
 	vector<int> gridSize;
@@ -531,24 +530,22 @@ void run(){
 		}
 	}
 
-	printf("\n");
-	printf("\n");
-	printf("GPU IDS      : ");
-	for (int i = 0; i < gpuId.size(); i++) {
-		printf("%d", gpuId.at(i));
-		if (i + 1 < gpuId.size()){	printf(", "); }
-	}
-	printf("\n");
-	printf("GPU GRIDSIZE : ");
-	for (int i = 0; i < gridSize.size(); i++) {
-		printf("%d", gridSize.at(i));
-		if (i + 1 < gridSize.size()) {
-			if ((i + 1) % 2 != 0) {		printf("x");	}
-		}
-	}
-	if (gpuAutoGrid) { 
-		printf(" (Auto grid size)\n");
-	} 
+	printf("\n\n");
+
+	// printf("GPU IDS      : ");
+	// for (int i = 0; i < gpuId.size(); i++) {
+	// 	printf("%d", gpuId.at(i));
+	// 	if (i + 1 < gpuId.size()){	printf(", "); }
+	// }
+	// printf("\n");
+	// printf("GPU GRIDSIZE : ");
+	// for (int i = 0; i < gridSize.size(); i++) {
+	// 	printf("%d", gridSize.at(i));
+	// 	if (i + 1 < gridSize.size()) {
+	// 		if ((i + 1) % 2 != 0) {		printf("x");	}
+	// 	}
+	// }
+	// if (gpuAutoGrid) { 	printf(" (Auto grid size)\n");	} 
 	
 	printf("MAX FOUND    : %d\n", maxFound);
 	printf("BTC ADDRESS  : %s\n", address.c_str());
@@ -556,7 +553,7 @@ void run(){
 
 	signal(SIGINT, CtrlHandler);
 	KeyHunt* v;
-	v = new KeyHunt(hashORxpoint, compMode, searchMode, coinType, gpuEnable, outputFile,
+	v = new KeyHunt(hashORxpoint, gpuEnable, outputFile,
 		maxFound, rangeStart.GetBase16(), rangeEnd.GetBase16(), should_exit, priv_dec, xN, P);
 	v->Search(gpuId, gridSize, should_exit);
 

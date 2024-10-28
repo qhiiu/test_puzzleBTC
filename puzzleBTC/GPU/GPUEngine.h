@@ -25,7 +25,6 @@ typedef struct {
 	uint32_t thId;
 	int16_t  incr;
 	uint8_t* hash;
-	bool mode;
 } ITEM;
 
 class GPUEngine
@@ -34,7 +33,7 @@ class GPUEngine
 public:
 
 	GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, int gpuId, uint32_t maxFound, 
-		int searchMode, int compMode, int coinType, const uint32_t* hashORxpoint);
+		const uint32_t* hashORxpoint);
 
 	~GPUEngine();
 
@@ -74,9 +73,6 @@ private:
 	uint64_t* _Gy;
 
 	bool initialised;
-	uint32_t compMode;
-	uint32_t searchMode;
-	uint32_t coinType;
 	bool littleEndian;
 
 	uint32_t maxFound;

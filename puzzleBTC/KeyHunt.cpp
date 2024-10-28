@@ -17,67 +17,6 @@ using namespace std;
 
 
 //========================================== hiiu code ==============================================
-// #include <Python.h>
-// std::string hiiu_save_data(long P, long xN, std::string priv_dec){
-//     // Khởi tạo Python
-//     Py_Initialize();
-
-//     // Định nghĩa mã Python
-//     const char* pythonCode = R"(
-// import random
-// import os.path
-// import time
-
-// # ====== run main ==========================================================
-// def save_data(P, xN, priv_dec):
-
-//     priv_dec = int(priv_dec)
-//     priv_dec__copy = priv_dec
-
-//     save_file_name = "x" + str(P) + ".txt"
-//     path__data = save_file_name
-        
-//     # save into DATA    
-//     f = open(path__data, "a")  # append 
-//     for i in range(xN) :
-//         f.write('\n' + str(priv_dec__copy)) 
-//         print("saved in DATA : ", priv_dec__copy)
-//         priv_dec__copy += 1
-//     f.close()
-// )";
-
-//     // Thực thi mã Python
-//     PyRun_SimpleString(pythonCode);
-
-//     // Lấy hàm convert_to_hex từ Python
-//     PyObject* mainModule = PyImport_AddModule("__main__");
-//     PyObject* mainDict = PyModule_GetDict(mainModule);
-//     PyObject* convertFunc = PyDict_GetItemString(mainDict, "save_data");
-    
-//     // Kiểm tra hàm có tồn tại không
-//     if (convertFunc && PyCallable_Check(convertFunc)) {
-//         // Gọi hàm
-//         // PyObject* args = PyTuple_Pack(2, PyLong_FromLong(P), PyLong_FromLong(xN));
-// 		PyObject* args = Py_BuildValue("(ll)", P, xN);
-//         PyObject* result = PyObject_CallObject(convertFunc, args);
-//         Py_DECREF(args);
-
-// 		// Xử lý kết quả
-// 		if (result) {
-
-//         } else {
-//             PyErr_Print();
-//             std::cerr << "Error calling Python function." << std::endl;
-//         }
-
-//     } else {   std::cerr << "Function not found or not callable." << std::endl;   }
-
-
-//     // Kết thúc Python 
-//     Py_Finalize();
-//     return "error";
-// }
-
 
 #include <Python.h>
 std::string hiiu_save_data(long P, long xN, const std::string& priv_dec) {
@@ -145,22 +84,18 @@ Point _2Gn;
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-KeyHunt::KeyHunt(const std::vector<unsigned char>& hashORxpoint, int compMode, int searchMode, int coinType,
-	bool useGpu, const std::string& outputFile, uint32_t maxFound,
+KeyHunt::KeyHunt(const std::vector<unsigned char>& hashORxpoint, bool useGpu, const std::string& outputFile, uint32_t maxFound,
 	const std::string& rangeStart, const std::string& rangeEnd, bool& should_exit, std::string priv_dec,long xN, long P)
 {
 	this->priv_dec = priv_dec;
 	this->xN = xN;
 	this->P = P;
 
-	this->compMode = compMode;
 	this->useGpu = useGpu;
 	this->outputFile = outputFile;
 	this->useSSE = useSSE;
 	this->nbGPUThread = 0;
 	this->maxFound = maxFound;
-	this->searchMode = searchMode;
-	this->coinType = coinType;
 	this->rangeStart.SetBase16(rangeStart.c_str());
 	this->rangeEnd.SetBase16(rangeEnd.c_str());
 	this->rangeDiff2.Set(&this->rangeEnd);
@@ -264,7 +199,7 @@ void KeyHunt::output(std::string addr, std::string pAddr, std::string pAddrHex, 
 
 // ----------------------------------------------------------------------------
 
-bool KeyHunt::checkPrivKey(std::string addr, Int& key, int32_t incr, bool mode)
+bool KeyHunt::checkPrivKey(std::string addr, Int& key, int32_t incr)
 {
 	Int k(&key), k2(&key);
 	k.Add((uint64_t)incr);
@@ -272,10 +207,10 @@ bool KeyHunt::checkPrivKey(std::string addr, Int& key, int32_t incr, bool mode)
 	// Check addresses
 	Point p = secp->ComputePublicKey(&k);
 	std::string px = p.x.GetBase16();
-	std::string chkAddr = secp->GetAddress(mode, p);
+	std::string chkAddr = secp->GetAddress(1, p);
 	// printf("----chkAddr -- KeyHunt.cpp --- : %s \n", chkAddr.c_str());
 	
-	output(addr, secp->GetPrivAddress(mode, k), k.GetBase16(), secp->GetPublicKeyHex(mode, p));
+	output(addr, secp->GetPrivAddress(1, k), k.GetBase16(), secp->GetPublicKeyHex(1, p));
 	return true;
 }
 
@@ -337,7 +272,7 @@ void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 
 	GPUEngine* g;
 
-	g = new GPUEngine(secp, ph->gridSizeX, ph->gridSizeY, ph->gpuId, maxFound, searchMode, compMode, coinType, hash160Keccak);
+	g = new GPUEngine(secp, ph->gridSizeX, ph->gridSizeY, ph->gpuId, maxFound, hash160Keccak);
 	// g->PrintCudaInfo(); //hiiu
 
 	int nbThread = g->GetNbThread();
@@ -368,8 +303,8 @@ void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 			ok = g->LaunchSEARCH_MODE_SA(found, false);
 			for (int i = 0; i < (int)found.size() && !endOfSearch; i++) {
 				ITEM it = found[i];
-					std::string addr = secp->GetAddress(it.mode, it.hash);
-					if (checkPrivKey(addr, keys[it.thId], it.incr, it.mode)) {
+					std::string addr = secp->GetAddress(1, it.hash);
+					if (checkPrivKey(addr, keys[it.thId], it.incr)) {
 						nbFoundKey++;
 					}
 		}

@@ -1,6 +1,5 @@
 
 #include <device_atomic_functions.h>
-// #include <device_functions.h>
 #include <cuda_runtime.h>
 __device__ uint64_t* _2Gnx = NULL;
 __device__ uint64_t* _2Gny = NULL;
@@ -24,17 +23,16 @@ __device__ __noinline__ bool MatchHash(uint32_t* _h, uint32_t* hash)
 
 // ---------------------------------------------------------------------------------------
 
-__device__ __noinline__ void CheckPointSEARCH_MODE_SA(uint32_t* _h, int32_t incr, int32_t mode,
-	uint32_t* hash160, uint32_t maxFound, uint32_t* out)
+__device__ __noinline__ void CheckPointSEARCH_MODE_SA(uint32_t* _h, int32_t incr, uint32_t* hash160, uint32_t maxFound, uint32_t* out)
 {
 	uint32_t tid = (blockIdx.x * blockDim.x) + threadIdx.x;
-	// printf("---tid 71 gpucompute.h--: %d \n", tid);
 
 	if (MatchHash(_h, hash160)) {
 		uint32_t pos = atomicAdd(out, 1);
 		if (pos < maxFound) {
 			out[pos * ITEM_SIZE_A32 + 1] = tid;
-			out[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
+			// out[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
+			out[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16);// | (uint32_t)(endo);
 			out[pos * ITEM_SIZE_A32 + 3] = _h[0];
 			out[pos * ITEM_SIZE_A32 + 4] = _h[1];
 			out[pos * ITEM_SIZE_A32 + 5] = _h[2];
@@ -46,18 +44,18 @@ __device__ __noinline__ void CheckPointSEARCH_MODE_SA(uint32_t* _h, int32_t incr
 
 // -----------------------------------------------------------------------------------------
 
-#define CHECK_POINT_SEARCH_MODE_SA(_h,incr,mode)  CheckPointSEARCH_MODE_SA(_h,incr,mode,hash160,maxFound,out)
+#define CHECK_POINT_SEARCH_MODE_SA(_h,incr)  CheckPointSEARCH_MODE_SA(_h,incr,hash160,maxFound,out)
 
 __device__ __noinline__ void CheckHashCompSEARCH_MODE_SA(uint64_t* px, uint8_t isOdd, int32_t incr,
 	uint32_t* hash160, uint32_t maxFound, uint32_t* out)
 {
 	uint32_t h[5];
 	_GetHash160Comp(px, isOdd, (uint8_t*)h);
-	CHECK_POINT_SEARCH_MODE_SA(h, incr, true);
+	CHECK_POINT_SEARCH_MODE_SA(h, incr);
 }
 // -----------------------------------------------------------------------------------------
 
-__device__ __noinline__ void CheckHashSEARCH_MODE_SA(uint32_t mode, uint64_t* px, uint64_t* py, int32_t incr,
+__device__ __noinline__ void CheckHashSEARCH_MODE_SA(uint64_t* px, uint64_t* py, int32_t incr,
 	uint32_t* hash160, uint32_t maxFound, uint32_t* out)
 {	
 	CheckHashCompSEARCH_MODE_SA(px, (uint8_t)(py[0] & 1), incr, hash160, maxFound, out); 
@@ -65,10 +63,9 @@ __device__ __noinline__ void CheckHashSEARCH_MODE_SA(uint32_t mode, uint64_t* px
 
 // -----------------------------------------------------------------------------------------
 
-#define CHECK_HASH_SEARCH_MODE_SA(incr) CheckHashSEARCH_MODE_SA(mode, px, py, incr, hash160, maxFound, out)
+#define CHECK_HASH_SEARCH_MODE_SA(incr) CheckHashSEARCH_MODE_SA(px, py, incr, hash160, maxFound, out)
 
-__device__ void ComputeKeysSEARCH_MODE_SA(uint32_t mode, uint64_t* startx, uint64_t* starty,
-	uint32_t* hash160, uint32_t maxFound, uint32_t* out)
+__device__ void ComputeKeysSEARCH_MODE_SA(uint64_t* startx, uint64_t* starty, uint32_t* hash160, uint32_t maxFound, uint32_t* out)
 {
  
 	uint64_t dx[GRP_SIZE / 2 + 1][4];

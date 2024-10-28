@@ -32,8 +32,7 @@ class KeyHunt
 {
 
 public:
-	KeyHunt(const std::vector<unsigned char>& hashORxpoint, int compMode, int searchMode, int coinType, 
-		bool useGpu, const std::string& outputFile, uint32_t maxFound, 
+	KeyHunt(const std::vector<unsigned char>& hashORxpoint, bool useGpu, const std::string& outputFile, uint32_t maxFound, 
 		const std::string& rangeStart, const std::string& rangeEnd, bool& should_exit, std::string priv_dec, long xN, long P);
 
 	~KeyHunt();
@@ -46,7 +45,7 @@ private:
 	void InitGenratorTable();
 
 	// std::string GetHex(std::vector<unsigned char>& buffer);
-	bool checkPrivKey(std::string addr, Int& key, int32_t incr, bool mode);
+	bool checkPrivKey(std::string addr, Int& key, int32_t incr);
 
 	void output(std::string addr, std::string pAddr, std::string pAddrHex, std::string pubKey);
 	bool isAlive(TH_PARAM* p);
@@ -65,10 +64,6 @@ private:
 
 	uint64_t counters[256];
 	double startTime;
-
-	int compMode;
-	int searchMode;
-	int coinType;
 
 	bool useGpu;
 	bool endOfSearch;

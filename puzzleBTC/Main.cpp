@@ -2,7 +2,6 @@
 #include "KeyHunt.h"
 #include "Base58.h"
 #include "CmdParse.h"
-// #include <fstream>
 #include <string>
 #include <string.h>
 #include <stdexcept>
@@ -12,7 +11,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstdint>
-
 #include <sstream>
 
 
@@ -34,12 +32,8 @@ bool parseRange(const std::string& s, Int& start, Int& end)
 	else {
 		std::string left = s.substr(0, pos);
 
-		if (left.length() == 0) {
-			start.SetInt32(1);
-		}
-		else {
-			start.SetBase16(left.c_str());
-		}
+		if (left.length() == 0) {	start.SetInt32(1);	}
+		else {	start.SetBase16(left.c_str());	}
 
 		std::string right = s.substr(pos + 1);
 
@@ -49,9 +43,7 @@ bool parseRange(const std::string& s, Int& start, Int& end)
 			end.Set(&start);
 			end.Add(&t);
 		}
-		else {
-			end.SetBase16(right.c_str());
-		}
+		else {	end.SetBase16(right.c_str());	}
 	}
 
 	return true;
@@ -60,39 +52,10 @@ bool parseRange(const std::string& s, Int& start, Int& end)
 void CtrlHandler(int signum) {
 	printf("\nBYE");
 	printf("\nBYE");
-	printf("\nBYE");
-	printf("\nBYE");
 	exit(signum);
 }
 
-// ============================================== hiiu code =============================================
-#include <fstream>
-void check_file_exist(){
-	FILE* file;
-    file = fopen("$.txt", "r");
-    if (file!=NULL)  {   std::cout << "$.txt exists ======$$$$======" << std::endl; exit(-1);   }
-}
-
-long long hiiu_check_priv_database(string a){
-    ifstream file("x67.txt");
-    string line;
-	long long n = 0;
-
-    if (file.is_open()) {
-        while (getline(file, line)) {
-            n += 1;
-            if (a == line){
-              std::cout << std::endl <<"-------- Had in Database !!! exit() -------"<< std::endl << std::endl;
-              exit(0);
-            }
-        }
-
-        file.close();
-	// std::cout << endl << "total check  : " << n ;
-    }   else {   cout << "Err file !!!" << endl;   }
-	return n;
-}
-
+// ============================================== hiiu python code =============================================
 
 #include <Python.h>
 std::string hiiu_random_priv_dec(long P, long xN){
@@ -440,11 +403,9 @@ def run_python(P, xN):
     return "error";
 }
 
-// ============================================== hiiu code =============================================
+// ==============================================end - hiiu python code =============================================
 
 void run(){
-	// check file $.txt exist or not
-	// check_file_exist(); //$.txt
 	
 	// Global Init
 	Timer::Init();
@@ -466,7 +427,7 @@ void run(){
 	std::vector<unsigned char> hashORxpoint;
 	int nbCPUThread = Timer::getCoreNumber();
 
-	uint32_t maxFound = 1024 * 64;
+	uint32_t maxFound = 1;
 
 	Int rangeStart;
 	Int rangeEnd;
@@ -531,22 +492,6 @@ void run(){
 	}
 
 	printf("\n\n");
-
-	// printf("GPU IDS      : ");
-	// for (int i = 0; i < gpuId.size(); i++) {
-	// 	printf("%d", gpuId.at(i));
-	// 	if (i + 1 < gpuId.size()){	printf(", "); }
-	// }
-	// printf("\n");
-	// printf("GPU GRIDSIZE : ");
-	// for (int i = 0; i < gridSize.size(); i++) {
-	// 	printf("%d", gridSize.at(i));
-	// 	if (i + 1 < gridSize.size()) {
-	// 		if ((i + 1) % 2 != 0) {		printf("x");	}
-	// 	}
-	// }
-	// if (gpuAutoGrid) { 	printf(" (Auto grid size)\n");	} 
-	
 	printf("MAX FOUND    : %d\n", maxFound);
 	printf("BTC ADDRESS  : %s\n", address.c_str());
 	printf("OUTPUT FILE  : %s\n", outputFile.c_str());

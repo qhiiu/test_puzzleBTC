@@ -18,7 +18,6 @@
 //======================================================================================
 
 #include <device_atomic_functions.h>
-// #include <device_functions.h>
 #include <cuda_runtime.h>
 #include <iostream>
 using namespace std;
@@ -212,8 +211,6 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 
 // ---------------------------------------------------------------------------------------
 
-using namespace std;
-
 int _ConvertSMVer2Cores(int major, int minor)
 {
 	// Defines for GPU Architecture types (using the SM version to determine the # of cores per SM
@@ -269,8 +266,7 @@ GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, i
 	cudaDeviceProp deviceProp;
 	CudaSafeCall(cudaGetDeviceProperties(&deviceProp, gpuId));
 
-	if (nbThreadGroup == -1)
-		nbThreadGroup = deviceProp.multiProcessorCount * 8;
+	if (nbThreadGroup == -1){ nbThreadGroup = deviceProp.multiProcessorCount * 8; } 
 
 	this->nbThread = nbThreadGroup * nbThreadPerGroup;
 	this->maxFound = maxFound;
@@ -311,7 +307,6 @@ GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, i
 
 	// generator table
 	InitGenratorTable(secp);
-
 
 	CudaSafeCall(cudaGetLastError());
 
@@ -448,7 +443,8 @@ GPUEngine::~GPUEngine()
 
 // ----------------------------------------------------------------------------
 
-int GPUEngine::GetNbThread() {
+int GPUEngine::GetNbThread() 
+{
 	return nbThread; 
 }
 
@@ -510,9 +506,8 @@ bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound)
 	// When can perform a standard copy, the kernel is eneded 
 	CudaSafeCall(cudaMemcpy(outputBufferPinned, outputBuffer, nbFound * ITEM_SIZE_A + 4, cudaMemcpyDeviceToHost)); // ITEM_SIZE_A = 28
 
-	for (uint32_t i = 0; i < nbFound; i++) 
+	for (uint32_t i = 0; i < nbFound; i++) //if found right key-hash-addr
 	{ 
-						// printf("\n  ---------- nếu đúng mới chạy    for -> launch() -------- A_2 \n");
 		uint32_t* itemPtr = outputBufferPinned + (i * ITEM_SIZE_A32 + 1); //ITEM_SIZE_A32 = 7
 		ITEM it;
 		it.thId = itemPtr[0];
@@ -530,5 +525,3 @@ bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound)
 
 	return true;
 }
-
-

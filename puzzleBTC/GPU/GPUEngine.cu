@@ -448,8 +448,7 @@ GPUEngine::~GPUEngine()
 
 // ----------------------------------------------------------------------------
 
-int GPUEngine::GetNbThread() 
-{	
+int GPUEngine::GetNbThread() {
 	return nbThread; 
 }
 
@@ -480,8 +479,6 @@ bool GPUEngine::SetKeys(Point* p) //p ở đây có dạng (x=, y= , z=1)
 	CudaSafeCall(cudaFreeHost(inputKeyPinned));
 	inputKeyPinned = NULL;
 
-
-	//gộp callKernelSEARCH_MODE_S_A() // return callKernelSEARCH_MODE_S_A();
 	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
 
 	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);

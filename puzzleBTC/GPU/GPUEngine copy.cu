@@ -1,4 +1,3 @@
-#include "./../SECP256k1.h"
 
 #include "GPUEngine.h"
 #include <cuda.h>
@@ -13,201 +12,30 @@
 #include "GPUMath.h"
 #include "GPUHash.h"
 #include "GPUBase58.h"
-
-// #include "GPUCompute.h" 
-//======================================================================================
-
-#include <device_atomic_functions.h>
-// #include <device_functions.h>
-#include <cuda_runtime.h>
-#include <iostream>
-using namespace std;
-
-__device__ uint64_t* _2Gnx = NULL;
-__device__ uint64_t* _2Gny = NULL;
-
-__device__ uint64_t* Gx = NULL;
-__device__ uint64_t* Gy = NULL;
+#include "GPUCompute.h"
 
 // ---------------------------------------------------------------------------------------
-
-__device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t incr,
-	uint32_t* hash160, uint32_t maxFound, uint32_t* out_found)
-{	
-	uint8_t isOdd = py[0] & 1; // 
-	uint32_t _h[5];  
-
-	_GetHash160Comp(px, isOdd, (uint8_t*)_h);  //---------- h = _h đây 
-
-	uint32_t tid = (blockIdx.x * blockDim.x) + threadIdx.x;
-
-	if (_h[0] == hash160[0] &&
-		_h[1] == hash160[1] &&
-		_h[2] == hash160[2] &&
-		_h[3] == hash160[3] &&
-		_h[4] == hash160[4] 
-	) {
-  		uint32_t pos = atomicAdd(out_found, 1);
-	
-		if (pos < maxFound) {
-			out_found[pos * ITEM_SIZE_A32 + 1] = tid;
-			// out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
-			out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16);// | (uint32_t)(endo);
-			out_found[pos * ITEM_SIZE_A32 + 3] = _h[0];
-			out_found[pos * ITEM_SIZE_A32 + 4] = _h[1];
-			out_found[pos * ITEM_SIZE_A32 + 5] = _h[2];
-			out_found[pos * ITEM_SIZE_A32 + 6] = _h[3]; 
-			out_found[pos * ITEM_SIZE_A32 + 7] = _h[4];
-		}
-	}
-}
-#define CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
-
-
-// GPUEngine.cu  
-// //======================================================================================
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 
 inline void __cudaSafeCall(cudaError err, const char* file, const int line)
 {
-	if (cudaSuccess != err){
+	if (cudaSuccess != err)
+	{
 		fprintf(stderr, "cudaSafeCall() failed at %s:%i : %s\n", file, line, cudaGetErrorString(err));
 		exit(-1);
 	}
 	return;
-} 
+}
 // ---------------------------------------------------------------------------------------
 
-__global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKey, uint32_t maxFound, uint32_t* out_found)
-{
-			// blockDim.x = 128 --- <<<_,128>>> // blockIdx.x từ 0-> 48 
-			// xPtr-yPtr : 0    - 512     // xPtr-yPtr : 1024 - 1536
+// mode single address
 
-	int xPtr = (blockIdx.x * blockDim.x) * 8;  
+__global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* keys, uint32_t maxFound, uint32_t* found)
+{
+	int xPtr = (blockIdx.x * blockDim.x) * 8;
 	int yPtr = xPtr + 4 * blockDim.x;
 
-	uint64_t* startx = __inputKey + xPtr;  
-	uint64_t* starty = __inputKey + yPtr;
-
-	uint64_t dx[GRP_SIZE / 2 + 1][4];  //mảng để lưu giá trị delta x.
-	uint64_t px[4]; 
-	uint64_t py[4];
-	uint64_t pyn[4];
-	uint64_t sx[4];
-	uint64_t sy[4];
-	uint64_t dy[4];
-	uint64_t _s[4];
-	uint64_t _p[4]; //mảng để lưu các giá trị tạm thời.
-
-
-	// Load starting key
-	__syncthreads();    //Đồng bộ hóa các luồng trong block hiện tại. // __syncthreads() là một hàm đồng bộ hóa trong CUDA, để đồng bộ hóa tất cả các luồng trong một block. Khi gọi hàm này, tất cả các luồng trong block đó sẽ dừng lại cho đến khi tất cả các luồng đã đến điểm gọi hàm. Điều này đảm bảo rằng mọi phép toán trước đó trong block đã hoàn thành trước khi bất kỳ luồng nào tiếp tục thực hiện các phép toán tiếp theo.
-	Load256A(sx, startx);
-	Load256A(sy, starty);
-	Load256(px, sx);
-	Load256(py, sy);   // Tải các giá trị bắt đầu vào các mảng sx, sy, px, py
-
-	// Fill group with delta x
-	uint32_t i;
-	for (i = 0; i < HSIZE; i++){ //HSIZE = (GRP_SIZE / 2 - 1) = 1023
-		ModSub256(dx[i], Gx + 4 * i, sx);  
-		}    // Tính toán các giá trị delta x cho nhóm điểm.
-	ModSub256(dx[i], Gx + 4 * i, sx);   // For the first point
-	ModSub256(dx[i + 1], _2Gnx, sx); // For the next center point
-
-	_ModInvGrouped(dx);  // Compute modular inverse // Tính toán nghịch đảo modulo cho các giá trị delta x.
-
-	// We use the fact that P + i*G and P - i*G has the same deltax, so the same inverse
-	// We compute key in the positive and negative way from the center of the group
-
-	// Check starting point
-	CHECK__HASH(GRP_SIZE / 2); //GRP_SIZE = 1024*2  //  điểm khởi đầu.
-	//-------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
-	
-	ModNeg256(pyn, py);  // Tính giá trị âm của py
-
-	
-	//tính toán các giá trị x và y cho từng điểm 
-	for (i = 0; i < HSIZE; i++) {   // HSIZE (GRP_SIZE / 2 - 1) = 1023 
-
-		// P = StartPoint + i*G  //--- thay p2 = G // thay _p2 = _p
-		Load256(px, sx);
-		Load256(py, sy);
-		ModSub256(dy, Gy + 4 * i, py);
-				//--------------- hiiu... Secp256K1::NextKey  -------------------- 
-		_ModMult(_s, dy, dx[i]);    //  s = (G.y-p1.y)*inverse(G.x-p1.x)
-		_ModSqr(_p, _s);           // _p = pow2(s)
-
-		ModSub256(px, _p, px);
-		ModSub256(px, Gx + 4 * i);  // px = pow2(s) - p1.x - G.x; 
-
-		ModSub256(py, Gx + 4 * i, px);
-		_ModMult(py, _s);            // py = - s*(ret.x-G.x)
-		ModSub256(py, Gy + 4 * i);   // py = - G.y - s*(ret.x-G.x);
-				//-----------------------------------
- 
-		CHECK__HASH(GRP_SIZE / 2 + (i + 1));    
-		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
-
-		// P = StartPoint - i*G, if (x,y) = i*G then (x,-y) = -i*G
-		Load256(px, sx);   
-		ModSub256(dy, pyn, Gy + 4 * i);
-				//--------------- hiiu... Secp256K1::NextKey --------------------
-		_ModMult(_s, dy, dx[i]);            //  s = (G.y-p1.y)*inverse(G.x-p1.x)
-		_ModSqr(_p, _s);                   // _p = pow2(s)
-
-		ModSub256(px, _p, px);
-		ModSub256(px, Gx + 4 * i);          // px = pow2(s) - p1.x - G.x;
-
-		ModSub256(py, px, Gx + 4 * i);
-		_ModMult(py, _s);                   // py = s*(ret.x-G.x)
-		ModSub256(py, Gy + 4 * i, py);      // py = - G.y - s*(ret.x-G.x);
-				//-----------------------------------
-
-		CHECK__HASH(GRP_SIZE / 2 - (i + 1));   
-		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
-	}
-
-	// First point (startP - (GRP_SZIE/2)*G)
-	Load256(px, sx);
-	Load256(py, sy);
-	ModNeg256(dy, Gy + 4 * i);
-	ModSub256(dy, py);
-
-	_ModMult(_s, dy, dx[i]);              //  s = (G.y-p1.y)*inverse(G.x-p1.x)
-	_ModSqr(_p, _s);                     // _p = pow2(s)
-
-	ModSub256(px, _p, px);
-	ModSub256(px, Gx + 4 * i);            // px = pow2(s) - p1.x - G.x;
-
-	ModSub256(py, px, Gx + 4 * i);
-	_ModMult(py, _s);                     // py = s*(ret.x-G.x)
-	ModSub256(py, Gy + 4 * i, py);        // py = - G.y - s*(ret.x-G.x);
-
-	
-	CHECK__HASH(0);   //Kiểm tra hash cho điểm cuối cùng.
-	//CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
-	i++;
-
-	// Next start point (startP +  *G) m //Cuối cùng, các giá trị x và y mới được lưu trở lại startx và starty
-	Load256(px, sx);
-	Load256(py, sy);
-	ModSub256(dy, _2Gny, py);
-
-	_ModMult(_s, dy, dx[i]);             //  s = (G.y-p1.y)*inverse(G.x-p1.x)
-	_ModSqr(_p, _s);                    // _p = pow2(s)
-
-	ModSub256(px, _p, px);
-	ModSub256(px, _2Gnx);                // px = pow2(s) - p1.x - G.x;
-
-	ModSub256(py, _2Gnx, px);
-	_ModMult(py, _s);                    // py = - s*(ret.x-G.x)
-	ModSub256(py, _2Gny);                // py = - G.y - s*(ret.x-G.x);
-
-	// Update starting point
-	__syncthreads();
-	Store256A(startx, px);
-	Store256A(starty, py);
+	ComputeKeysSEARCH_MODE_SA(keys + xPtr, keys + yPtr, hash160, maxFound, found);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -218,7 +46,8 @@ int _ConvertSMVer2Cores(int major, int minor)
 {
 	// Defines for GPU Architecture types (using the SM version to determine the # of cores per SM
 	typedef struct {
-		int SM;  // 0xMm (hexidecimal notation), M = SM Major version, 	// and m = SM minor version
+		int SM;  // 0xMm (hexidecimal notation), M = SM Major version,
+		// and m = SM minor version
 		int Cores;
 	} sSMtoCores;
 
@@ -283,12 +112,14 @@ GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, i
 		nbThread / nbThreadPerGroup,
 		nbThreadPerGroup);
 	
+	// printf("gpuId,deviceProp.name,deviceProp.multiProcessorCount,_ConvertSMVer2Cores(deviceProp.major,deviceProp.minor),nbThread / nbThreadPerGroup = nbThreadGroup,nbThreadPerGroup) \n\n");
+
 	deviceName = std::string(tmp);
 
 	// Prefer L1 (We do not use __shared__ at all)
 	CudaSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
-	size_t stackSize = 49152; 
+	size_t stackSize = 49152;
 	CudaSafeCall(cudaDeviceSetLimit(cudaLimitStackSize, stackSize));
 
 	// Allocate memory
@@ -349,19 +180,20 @@ void GPUEngine::InitGenratorTable(Secp256K1* secp)
 	Point* Gn = new Point[size];
 	Point g = secp->G;
 	Gn[0] = g;
-	g = secp->DoubleDirect(g); 
+	g = secp->DoubleDirect(g);
 	Gn[1] = g;
 	for (int i = 2; i < size; i++) {
 		g = secp->AddDirect(g, secp->G);
 		Gn[i] = g;
 	}
-	// _2Gn = CPU_GRP_SIZE*G   
+	// _2Gn = CPU_GRP_SIZE*G
 	Point _2Gn = secp->DoubleDirect(Gn[size / 2 - 1]);
 
 	int nbDigit = 4;
 	for (int i = 0; i < nbDigit; i++) {
 		_2GnxPinned[i] = _2Gn.x.bits64[i];
 		_2GnyPinned[i] = _2Gn.y.bits64[i];
+
 	}
 	for (int i = 0; i < size / 2; i++) {
 		for (int j = 0; j < nbDigit; j++) {
@@ -388,7 +220,6 @@ void GPUEngine::InitGenratorTable(Secp256K1* secp)
 	CudaSafeCall(cudaFreeHost(GyPinned));
 	GyPinned = NULL;
 
-	//cudaMemcpyToSymbol : để sao chép dữ liệu từ bộ nhớ của máy chủ (host) vào bộ nhớ của thiết bị (device) cho các biến toàn cục (global variables)
 	CudaSafeCall(cudaMemcpyToSymbol(_2Gnx, &__2Gnx, sizeof(uint64_t*)));
 	CudaSafeCall(cudaMemcpyToSymbol(_2Gny, &__2Gny, sizeof(uint64_t*)));
 	CudaSafeCall(cudaMemcpyToSymbol(Gx, &_Gx, sizeof(uint64_t*)));
@@ -399,9 +230,7 @@ void GPUEngine::InitGenratorTable(Secp256K1* secp)
 // ----------------------------------------------------------------------------
 
 int GPUEngine::GetGroupSize()
-{	
-	return GRP_SIZE; //GRP_SIZE = 1024*2
-}
+{	return GRP_SIZE; }
 
 // ----------------------------------------------------------------------------
 
@@ -448,18 +277,26 @@ GPUEngine::~GPUEngine()
 
 // ----------------------------------------------------------------------------
 
-int GPUEngine::GetNbThread() 
-{	
-	return nbThread; 
-}
+int GPUEngine::GetNbThread()
+{	return nbThread; }
 
 // ----------------------------------------------------------------------------
 
-bool GPUEngine::SetKeys(Point* p) //p ở đây có dạng (x=, y= , z=1)
+bool GPUEngine::callKernelSEARCH_MODE_SA()
 {
-	// Sets the starting keys for each thread 	// p must contains nbThread public keys
-	for (int i = 0; i < nbThread; i += nbThreadPerGroup) { //nbThread = 6144 -- nbThreadPerGroup = 128 
+	// Reset nbFound
+	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
 
+	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);
+
+	return true;
+
+}
+
+bool GPUEngine::SetKeys(Point* p)
+{
+	// Sets the starting keys for each thread	// p must contains nbThread public keys
+	for (int i = 0; i < nbThread; i += nbThreadPerGroup) {
 		for (int j = 0; j < nbThreadPerGroup; j++) {
 
 			inputKeyPinned[8 * i + j + 0 * nbThreadPerGroup] = p[i + j].x.bits64[0];
@@ -471,7 +308,7 @@ bool GPUEngine::SetKeys(Point* p) //p ở đây có dạng (x=, y= , z=1)
 			inputKeyPinned[8 * i + j + 5 * nbThreadPerGroup] = p[i + j].y.bits64[1];
 			inputKeyPinned[8 * i + j + 6 * nbThreadPerGroup] = p[i + j].y.bits64[2];
 			inputKeyPinned[8 * i + j + 7 * nbThreadPerGroup] = p[i + j].y.bits64[3];
-  		}
+		}
 	}
 
 	// Fill device memory
@@ -480,58 +317,46 @@ bool GPUEngine::SetKeys(Point* p) //p ở đây có dạng (x=, y= , z=1)
 	CudaSafeCall(cudaFreeHost(inputKeyPinned));
 	inputKeyPinned = NULL;
 
+	return callKernelSEARCH_MODE_SA();
 
-	//gộp callKernelSEARCH_MODE_S_A() // return callKernelSEARCH_MODE_S_A();
-	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
-
-	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);
-	return true;
 }
 
 // ----------------------------------------------------------------------------
 
-bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound) 
+bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound, bool spinWait)
 {
 	dataFound.clear();
 
 	// Get the result
-	cudaEvent_t evt;
-	CudaSafeCall(cudaEventCreate(&evt));
-	CudaSafeCall(cudaMemcpyAsync(outputBufferPinned, outputBuffer, 4, cudaMemcpyDeviceToHost, 0));
-	CudaSafeCall(cudaEventRecord(evt, 0));
-
-	//The function enters a loop where it checks if the event has completed. //If not, it sleeps for 1 millisecond to avoid busy-waiting.
-	while (cudaEventQuery(evt) == cudaErrorNotReady) {  	
-		Timer::SleepMillis(1);// Sleep 1 ms to free the CPU 
-	}
-	
-	CudaSafeCall(cudaEventDestroy(evt));
+		cudaEvent_t evt;
+		CudaSafeCall(cudaEventCreate(&evt));
+		CudaSafeCall(cudaMemcpyAsync(outputBufferPinned, outputBuffer, 4, cudaMemcpyDeviceToHost, 0));
+		CudaSafeCall(cudaEventRecord(evt, 0));
+		while (cudaEventQuery(evt) == cudaErrorNotReady) {
+			// Sleep 1 ms to free the CPU
+			Timer::SleepMillis(1);
+		}
+		CudaSafeCall(cudaEventDestroy(evt));
 
 	// Look for data found
 	uint32_t nbFound = outputBufferPinned[0];
 
-	// When can perform a standard copy, the kernel is eneded 
-	CudaSafeCall(cudaMemcpy(outputBufferPinned, outputBuffer, nbFound * ITEM_SIZE_A + 4, cudaMemcpyDeviceToHost)); // ITEM_SIZE_A = 28
+	// When can perform a standard copy, the kernel is eneded
+	CudaSafeCall(cudaMemcpy(outputBufferPinned, outputBuffer, nbFound * ITEM_SIZE_A + 4, cudaMemcpyDeviceToHost));
 
-	for (uint32_t i = 0; i < nbFound; i++) 
-	{ 
-						// printf("\n  ---------- nếu đúng mới chạy    for -> launch() -------- A_2 \n");
-		uint32_t* itemPtr = outputBufferPinned + (i * ITEM_SIZE_A32 + 1); //ITEM_SIZE_A32 = 7
+	for (uint32_t i = 0; i < nbFound; i++) {
+		uint32_t* itemPtr = outputBufferPinned + (i * ITEM_SIZE_A32 + 1);
 		ITEM it;
 		it.thId = itemPtr[0];
 		int16_t* ptr = (int16_t*)&(itemPtr[1]);
 		//it.endo = ptr[0] & 0x7FFF;
 		// it.mode = (ptr[0] & 0x8000) != 0;
-		it.incr = ptr[1];  
+		it.incr = ptr[1];
 		it.hash = (uint8_t*)(itemPtr + 2);
 		dataFound.push_back(it);
 	}
-	   
-	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
 
-	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);
-
-	return true;
+	return callKernelSEARCH_MODE_SA();
 }
 
 

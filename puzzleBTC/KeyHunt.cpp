@@ -300,7 +300,7 @@ void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 	while (ok && !endOfSearch) {
 		// phần này chạy nếu đã tìm đc ví đúng
 			// printf("hiiu---------------while - KeyHunt::FindKeyGPU -------------- \n");
-			ok = g->LaunchSEARCH_MODE_SA(found, false);
+			ok = g->LaunchSEARCH_MODE_SA(found);
 			for (int i = 0; i < (int)found.size() && !endOfSearch; i++) {
 				ITEM it = found[i];
 					std::string addr = secp->GetAddress(1, it.hash);

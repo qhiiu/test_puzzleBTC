@@ -39,7 +39,7 @@ public:
 
 	bool SetKeys(Point* p);
 
-	bool LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound, bool spinWait = false);
+	bool LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound);
 
 	int GetNbThread();
 	int GetGroupSize();

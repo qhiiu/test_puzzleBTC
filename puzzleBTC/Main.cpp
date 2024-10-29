@@ -288,11 +288,11 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
     rangeEnd = rangeStart;
     rangeEnd.Add(&_xNB);
 
-    // // --------------------- test -----------------------------
-    // address = "13zb1hQbWVsc2S7ZTZnP2G4undNNpdh5so";
-    // rangeStart.SetBase16("2832ed74f00000000");
-    // rangeEnd.SetBase16("2832ed74f90000000");
-    // // --------------------- test=end -----------------------------
+            // // --------------------- test -----------------------------
+            // address = "13zb1hQbWVsc2S7ZTZnP2G4undNNpdh5so";
+            // rangeStart.SetBase16("2832ed74f00000000");
+            // rangeEnd.SetBase16("2832ed74f90000000");
+            // // --------------------- test=end -------------------------
 
     std::cout << "\nPUZZLE      : " << P;
     std::cout << "\nADDRESS     : " << address;
@@ -312,7 +312,7 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
 
 //-----------------------------------------------------------------------
 
-void run(){
+void run(uint64_t P, uint64_t xN){
     
     check_file_exist(); // check file $.txt
 
@@ -328,12 +328,6 @@ void run(){
 
     std::string address = "";
 	Int priv_dec, rangeStart, rangeEnd;
-
-	uint64_t P = 67;
-	uint64_t xN = 1;
-    // input P-xN 
-	// std::cout <<"nhập P = "; std::cin >> P ; std::cout << std::endl;
-	// std::cout <<"nhập xN = "; std::cin >> xN ; std::cout << std::endl;
 
     init_value(P, xN, address, priv_dec, rangeStart, rangeEnd);
 
@@ -365,13 +359,20 @@ void run(){
 };
 
 int main(){
-	int sleepTime = 10; 
-    // std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;  //inpu-t
+    
+	uint64_t P = 67;
+	uint64_t xN = 1;
+	int sleepTime = 10;
+
+            // ----- input P-xN-sleepTime -------
+            // std::cout <<"nhập P = "; std::cin >> P ; std::cout << std::endl;
+            // std::cout <<"nhập xN = "; std::cin >> xN ; std::cout << std::endl;
+            std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;  
 
 	for (int i = 0; i < 9999; i++)
 	{
 		std::cout << "\n-- sleep : "<< sleepTime << " s" << std::endl; 
-		run();
+		run(P, xN);
 		
         // sleep time --- print coutdown
         for (int j = sleepTime; j >= 0; j--){

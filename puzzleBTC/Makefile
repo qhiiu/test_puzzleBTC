@@ -1,35 +1,13 @@
 #---------------------------------------------------------------------
-# Makefile for KeyHunt
-#
-# Author : Jean-Luc PONS
-
-SRC = Base58.cpp IntGroup.cpp Main.cpp Random.cpp \
-      Timer.cpp Int.cpp IntMod.cpp Point.cpp SECP256K1.cpp \
-      KeyHunt.cpp GPU/GPUGenerate.cpp hash/ripemd160.cpp \
-      hash/sha256.cpp hash/sha512.cpp hash/ripemd160_sse.cpp \
-      hash/sha256_sse.cpp hash/keccak160.cpp GmpUtil.cpp CmdParse.cpp
 
 OBJDIR = obj
 
-ifdef gpu
-
 OBJET = $(addprefix $(OBJDIR)/, \
         Base58.o IntGroup.o Main.o Random.o Timer.o Int.o \
-        IntMod.o Point.o SECP256K1.o KeyHunt.o GPU/GPUGenerate.o \
+        IntMod.o Point.o SECP256K1.o KeyHunt.o \
         hash/ripemd160.o hash/sha256.o hash/sha512.o \
         hash/ripemd160_sse.o hash/sha256_sse.o hash/keccak160.o \
-        GPU/GPUEngine.o GmpUtil.o CmdParse.o)
-
-else
-
-OBJET = $(addprefix $(OBJDIR)/, \
-        Base58.o IntGroup.o Main.o Random.o Timer.o Int.o \
-        IntMod.o Point.o SECP256K1.o KeyHunt.o GPU/GPUGenerate.o \
-        hash/ripemd160.o hash/sha256.o hash/sha512.o \
-        hash/ripemd160_sse.o hash/sha256_sse.o hash/keccak160.o \
-        GmpUtil.o CmdParse.o)
-
-endif
+        GPU/GPUEngine.o GmpUtil.o )
 
 CXX        = g++
 CUDA       = /usr/local/cuda-12.6
@@ -39,38 +17,14 @@ NVCC       = $(CUDA)/bin/nvcc
 CCAP = 61 #https://developer.nvidia.com/cuda-gpus
 ccap       = $(shell echo $(CCAP) | tr -d '.')
 
-ifdef gpu
-ifdef debug
-CXXFLAGS   = -DWITHGPU -m64  -mssse3 -Wno-write-strings -g -I. -I$(CUDA)/include
-else
-# CXXFLAGS   =  -DWITHGPU -m64 -mssse3 -Wno-write-strings -O2 -I. -I$(CUDA)/include 
-CXXFLAGS   =  -DWITHGPU -m64 -mssse3 -Wno-write-strings -O2 -I. -I$(CUDA)/include -I/usr/include/python3.8 -lpython3.8
+CXXFLAGS   =  -DWITHGPU -m64 -mssse3 -Wno-write-strings -O2 -I. -I$(CUDA)/include
 
-endif
-# LFLAGS     = -lgmp -lpthread -L$(CUDA)/lib64 -lcudart
-LFLAGS     = -lgmp -lpthread -L$(CUDA)/lib64 -lcudart -I/usr/include/python3.8 -lpython3.8
-
-else
-ifdef debug
-CXXFLAGS   = -m64 -mssse3 -Wno-write-strings -g -I. -I$(CUDA)/include
-else
-CXXFLAGS   =  -m64 -mssse3 -Wno-write-strings -O2 -I. -I$(CUDA)/include
-endif
-LFLAGS     = -lgmp -lpthread
-endif
-
+LFLAGS     = -lgmp -lpthread -L$(CUDA)/lib64 -lcudart 
 
 #--------------------------------------------------------------------
 
-ifdef gpu
-ifdef debug
-$(OBJDIR)/GPU/GPUEngine.o: GPU/GPUEngine.cu
-	$(NVCC) -G -maxrregcount=0 --ptxas-options=-v --compile --compiler-options -fPIC -ccbin $(CXXCUDA) -m64 -g -I$(CUDA)/include -gencode=arch=compute_$(ccap),code=sm_$(ccap) -o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
-else
 $(OBJDIR)/GPU/GPUEngine.o: GPU/GPUEngine.cu
 	$(NVCC) -maxrregcount=0 --ptxas-options=-v --compile --compiler-options -fPIC -ccbin $(CXXCUDA) -m64 -O2 -I$(CUDA)/include -gencode=arch=compute_$(ccap),code=sm_$(ccap) -o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
-endif
-endif
 
 $(OBJDIR)/%.o : %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<

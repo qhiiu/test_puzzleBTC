@@ -143,7 +143,7 @@ public:
 	uint32_t ModPositiveK1();
 
 	// Size
-	int GetSize();       // Number of significant 32bit limbs
+	int GetSize();       // Number of significant 32bit limbs 
 	int GetSize64();     // Number of significant 64bit limbs
 	int GetBitLength();  // Number of significant bits
 

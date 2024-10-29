@@ -31,7 +31,7 @@ __device__ uint64_t* Gy = NULL;
 // ---------------------------------------------------------------------------------------
 
 __device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t incr,
-	uint32_t* hash160, uint32_t maxFound, uint32_t* out_found)
+	uint32_t* hash160, uint32_t* out_found)
 {	
 	uint8_t isOdd = py[0] & 1; // 
 	uint32_t _h[5];  
@@ -48,7 +48,7 @@ __device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t inc
 	) {
   		uint32_t pos = atomicAdd(out_found, 1);
 	
-		if (pos < maxFound) {
+		if (pos < 1) {
 			out_found[pos * ITEM_SIZE_A32 + 1] = tid;
 			// out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
 			out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16);// | (uint32_t)(endo);
@@ -60,7 +60,7 @@ __device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t inc
 		}
 	}
 }
-#define CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
+#define CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 
 
 // GPUEngine.cu  
@@ -77,7 +77,7 @@ inline void __cudaSafeCall(cudaError err, const char* file, const int line)
 } 
 // ---------------------------------------------------------------------------------------
 
-__global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKey, uint32_t maxFound, uint32_t* out_found)
+__global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKey, uint32_t* out_found)
 {
 			// blockDim.x = 128 --- <<<_,128>>> // blockIdx.x từ 0-> 48 
 			// xPtr-yPtr : 0    - 512     // xPtr-yPtr : 1024 - 1536
@@ -121,7 +121,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 
 	// Check starting point
 	CHECK__HASH(GRP_SIZE / 2); //GRP_SIZE = 1024*2  //  điểm khởi đầu.
-	//-------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
+	//-------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 	
 	ModNeg256(pyn, py);  // Tính giá trị âm của py
 
@@ -146,7 +146,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 				//-----------------------------------
  
 		CHECK__HASH(GRP_SIZE / 2 + (i + 1));    
-		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
+		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 
 		// P = StartPoint - i*G, if (x,y) = i*G then (x,-y) = -i*G
 		Load256(px, sx);   
@@ -164,7 +164,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 				//-----------------------------------
 
 		CHECK__HASH(GRP_SIZE / 2 - (i + 1));   
-		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
+		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 	}
 
 	// First point (startP - (GRP_SZIE/2)*G)
@@ -185,7 +185,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 
 	
 	CHECK__HASH(0);   //Kiểm tra hash cho điểm cuối cùng.
-	//CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, maxFound, out_found)
+	//CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 	i++;
 
 	// Next start point (startP +  *G) m //Cuối cùng, các giá trị x và y mới được lưu trở lại startx và starty
@@ -251,7 +251,7 @@ int _ConvertSMVer2Cores(int major, int minor)
 
 // ----------------------------------------------------------------------------
 
-GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, int gpuId, uint32_t maxFound, const uint32_t* hashORxpoint)
+GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, int gpuId, const uint32_t* hashORxpoint)
 {
 	// Initialise CUDA
 	this->nbThreadPerGroup = nbThreadPerGroup;
@@ -269,8 +269,7 @@ GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, i
 	if (nbThreadGroup == -1){ nbThreadGroup = deviceProp.multiProcessorCount * 8; } 
 
 	this->nbThread = nbThreadGroup * nbThreadPerGroup;
-	this->maxFound = maxFound;
-	this->outputSize = (maxFound * ITEM_SIZE_A + 4);
+	this->outputSize = (1 * ITEM_SIZE_A + 4);
 
 	char tmp[512];
 	sprintf(tmp, "GPU #%d %s (%dx%d cores) Grid(%dx%d) \n",
@@ -477,7 +476,7 @@ bool GPUEngine::SetKeys(Point* p) //p ở đây có dạng (x=, y= , z=1)
 
 	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
 
-	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);
+	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, outputBuffer);
 	return true;
 }
 
@@ -521,7 +520,7 @@ bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound)
 	   
 	CudaSafeCall(cudaMemset(outputBuffer, 0, 4));
 
-	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, maxFound, outputBuffer);
+	compute_keys_comp_mode_sa <<< nbThread / nbThreadPerGroup, nbThreadPerGroup >>>(inputHashORxpoint, inputKey, outputBuffer);
 
 	return true;
 }

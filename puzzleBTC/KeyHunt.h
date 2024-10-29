@@ -32,8 +32,8 @@ class KeyHunt
 {
 
 public:
-	KeyHunt(const std::vector<unsigned char>& hashORxpoint, bool useGpu, const std::string& outputFile, uint32_t maxFound, 
-		const std::string& rangeStart, const std::string& rangeEnd, bool& should_exit, std::string priv_dec, long xN, long P);
+	KeyHunt(const std::vector<unsigned char>& hashORxpoint, const std::string& outputFile, 
+		const Int rangeStart, const Int rangeEnd, const Int priv_dec, uint64_t xN, uint64_t P , bool& should_exit);
 
 	~KeyHunt();
 
@@ -44,7 +44,6 @@ private:
 
 	void InitGenratorTable();
 
-	// std::string GetHex(std::vector<unsigned char>& buffer);
 	bool checkPrivKey(std::string addr, Int& key, int32_t incr);
 
 	void output(std::string addr, std::string pAddr, std::string pAddrHex, std::string pubKey);
@@ -65,32 +64,22 @@ private:
 	uint64_t counters[256];
 	double startTime;
 
-	bool useGpu;
 	bool endOfSearch;
 	int nbGPUThread;
 	int nbFoundKey;
-	uint64_t targetCounter;
 
 	std::string outputFile;
-	std::string inputFile;
 	uint32_t hash160Keccak[5];
-	uint32_t xpoint[8];
-	bool useSSE;
 
+	Int priv_dec;
+	uint64_t xN;
+	uint64_t P;
+	
 	Int rangeStart;
 	Int rangeEnd;
 	Int rangeDiff;
 	Int rangeDiff2;
 
-	std::string priv_dec;
-	long xN;
-	long P;
-
-	uint32_t maxFound;
-
-
-
-	pthread_mutex_t  ghMutex;
 };
 
 #endif // KEYHUNTH

@@ -15,92 +15,24 @@
 
 using namespace std;
 
-
-//========================================== hiiu code ==============================================
-
-#include <Python.h>
-std::string hiiu_save_data(long P, long xN, const std::string& priv_dec) {
-    // Initialize Python
-    Py_Initialize();
-
-    // Define Python code
-    const char* pythonCode = R"(
-import random
-import os.path
-
-def save_data(P, xN, priv_dec):
-    priv_dec = int(priv_dec)
-    priv_dec_copy = priv_dec
-
-    save_file_name = f"x{P}.txt"
-    
-    # Save into DATA
-    with open(save_file_name, "a") as f:
-        for i in range(xN):
-            f.write(f'\n{priv_dec_copy}') 
-            print("saved in DATA :", priv_dec_copy)
-            priv_dec_copy += 1
-)";
-
-    // Execute Python code
-    PyRun_SimpleString(pythonCode);
-
-    // Get the main module and function
-    PyObject* mainModule = PyImport_AddModule("__main__");
-    PyObject* mainDict = PyModule_GetDict(mainModule);
-    PyObject* saveFunc = PyDict_GetItemString(mainDict, "save_data");
-    
-    // Check if the function is callable
-    if (saveFunc && PyCallable_Check(saveFunc)) {
-        // Call the function
-        PyObject* args = Py_BuildValue("(lls)", P, xN, priv_dec.c_str());
-        PyObject* result = PyObject_CallObject(saveFunc, args);
-        Py_DECREF(args);
-
-        // Check the result
-        if (result) {
-            Py_DECREF(result);
-            Py_Finalize();
-            return "Data saved successfully.";
-        } else {
-            PyErr_Print();
-            std::cerr << "Error calling Python function." << std::endl;
-        }
-    } else {
-        std::cerr << "Function not found or not callable." << std::endl;
-    }
-
-    // Finalize Python
-    Py_Finalize();
-    return "Error occurred.";
-}
-//======================================== end hiiu code========================================================================
-
-
-
 Point Gn[CPU_GRP_SIZE / 2];
 Point _2Gn;
 
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 
-KeyHunt::KeyHunt(const std::vector<unsigned char>& hashORxpoint, bool useGpu, const std::string& outputFile, uint32_t maxFound,
-	const std::string& rangeStart, const std::string& rangeEnd, bool& should_exit, std::string priv_dec,long xN, long P)
+KeyHunt::KeyHunt(const std::vector<unsigned char>& hashORxpoint, const std::string& outputFile,
+	const Int rangeStart, const Int rangeEnd, const Int priv_dec,uint64_t xN, uint64_t P, bool& should_exit)
 {
 	this->priv_dec = priv_dec;
 	this->xN = xN;
 	this->P = P;
 
-	this->useGpu = useGpu;
 	this->outputFile = outputFile;
-	this->useSSE = useSSE;
 	this->nbGPUThread = 0;
-	this->maxFound = maxFound;
-	this->rangeStart.SetBase16(rangeStart.c_str());
-	this->rangeEnd.SetBase16(rangeEnd.c_str());
+	this->rangeStart = rangeStart;
+	this->rangeEnd = rangeEnd;
 	this->rangeDiff2.Set(&this->rangeEnd);
 	this->rangeDiff2.Sub(&this->rangeStart);
-	this->targetCounter = 1;
 
 	secp = new Secp256K1();
 	secp->Init();
@@ -134,7 +66,6 @@ void KeyHunt::InitGenratorTable()
 	time_t now = time(NULL);
 	ctimeBuff = ctime(&now);
 	printf("Start Time   : %s", ctimeBuff);
-
 	printf("Global start : %s (%d bit)\n", this->rangeStart.GetBase16().c_str(), this->rangeStart.GetBitLength());
 	printf("Global end   : %s (%d bit)\n", this->rangeEnd.GetBase16().c_str(), this->rangeEnd.GetBitLength());
 	printf("Global range : %s (%d bit)\n", this->rangeDiff2.GetBase16().c_str(), this->rangeDiff2.GetBitLength());
@@ -145,9 +76,19 @@ void KeyHunt::InitGenratorTable()
 #include <fstream>
 KeyHunt::~KeyHunt()
 {	
-	std::cout<< std::endl;
+	printf("\n\n");
 	// save data
-	hiiu_save_data(this->P, this->xN, this->priv_dec);
+    Int priv_dec_copy = this->priv_dec;
+
+    std::ofstream saveData("x67.txt", std::ios::app); //create x67.txt to write_append
+
+    for (int i = 0; i < this->xN; i++) // loop to save each priv_dec 
+    {
+        saveData <<"\n"<< priv_dec_copy.GetBase10(); // write data into file
+        priv_dec_copy.AddOne(); 
+    }
+
+    saveData.close();   // close file
 
 	// print end_time 
 	char* ctimeBuff;
@@ -163,21 +104,18 @@ KeyHunt::~KeyHunt()
 
 void KeyHunt::output(std::string addr, std::string pAddr, std::string pAddrHex, std::string pubKey)
 {
-	pthread_mutex_lock(&ghMutex);
-
 	FILE* f = stdout;
 	bool needToClose = false;
 
 	if (outputFile.length() > 0) {
 		f = fopen(outputFile.c_str(), "a");
 		if (f == NULL) {
-			printf("Cannot open %s for writing\n", outputFile.c_str());
+			printf("\n\nCannot open %s for writing\n\n\n", outputFile.c_str());
 			f = stdout;
-		}	else {	needToClose = true;	}
+		}	else {	needToClose = true; }
 	}
 
-	if (!needToClose)
-		printf("\n");
+	if (!needToClose){ printf("\n"); }
 
 	fprintf(f, "PubAddress: %s\n", addr.c_str());
 	fprintf(stdout, "\n=================================================================================\n");
@@ -191,16 +129,17 @@ void KeyHunt::output(std::string addr, std::string pAddr, std::string pAddrHex, 
 	fprintf(f, "=================================================================================\n");
 	fprintf(stdout, "=================================================================================\n");
 
-	if (needToClose)
-		fclose(f);
+	if (needToClose){ fclose(f); }
 
-	pthread_mutex_unlock(&ghMutex);
+	printf("\n.\n.\n.\n.\n.\n --- DONE !! check and take money !! ---- \n.\n.\n.\n.\n.\n.\n");
+	// exit(-1);
 }
 
 // ----------------------------------------------------------------------------
 
 bool KeyHunt::checkPrivKey(std::string addr, Int& key, int32_t incr)
 {
+	printf("\n------test 2 ");
 	Int k(&key), k2(&key);
 	k.Add((uint64_t)incr);
 	k2.Add((uint64_t)incr);
@@ -208,7 +147,6 @@ bool KeyHunt::checkPrivKey(std::string addr, Int& key, int32_t incr)
 	Point p = secp->ComputePublicKey(&k);
 	std::string px = p.x.GetBase16();
 	std::string chkAddr = secp->GetAddress(1, p);
-	// printf("----chkAddr -- KeyHunt.cpp --- : %s \n", chkAddr.c_str());
 	
 	output(addr, secp->GetPrivAddress(1, k), k.GetBase16(), secp->GetPublicKeyHex(1, p));
 	return true;
@@ -227,8 +165,6 @@ void* _FindKeyGPU(void* lpParam)
 
 void KeyHunt::getGPUStartingKeys(Int & tRangeStart, Int & tRangeEnd, int groupSize, int nbThread, Int * keys, Point * p)
 {
-	// printf("==============> 11 <============ keyhunt.cpp\n");
-
 	Int tRangeDiff(tRangeEnd);
 	Int tRangeStart2(tRangeStart);
 	Int tRangeEnd2(tRangeStart);
@@ -260,7 +196,6 @@ void KeyHunt::getGPUStartingKeys(Int & tRangeStart, Int & tRangeEnd, int groupSi
 
 void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 {
-	// printf("==============> 12 <============ keyhunt.cpp\n");
 	bool ok = true;
 
 // #ifdef WITHGPU
@@ -272,24 +207,18 @@ void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 
 	GPUEngine* g;
 
-	g = new GPUEngine(secp, ph->gridSizeX, ph->gridSizeY, ph->gpuId, maxFound, hash160Keccak);
+	g = new GPUEngine(secp, ph->gridSizeX, ph->gridSizeY, ph->gpuId, hash160Keccak);
 	// g->PrintCudaInfo(); //hiiu
 
 	int nbThread = g->GetNbThread();
-
-	std::cout << "nbThread - keyhunt.cpp : "<< nbThread << std::endl;
-
+	printf("nbThread: %d\n", nbThread );
+	printf("GPU	: %s\n\n", g->deviceName.c_str());
+	
+		
 	Point* p = new Point[nbThread];
 	Int* keys = new Int[nbThread];
 	std::vector<ITEM> found;
-
-	printf("GPU          : %s\n\n", g->deviceName.c_str());
-
 	counters[thId] = 0;
-
-	// printf("-----tRangeStart---keyhunt.cpp---: %d\n",tRangeStart); // result : 0
-	// printf("-----tRangeEnd---keyhunt.cpp---: %d\n",tRangeEnd); // result : 0
-
 
 	getGPUStartingKeys(tRangeStart, tRangeEnd, g->GetGroupSize(), nbThread, keys, p);
 	ok = g->SetKeys(p);
@@ -297,16 +226,13 @@ void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 	ph->hasStarted = true;
 
 	// GPU Thread
-	while (ok && !endOfSearch) {
-		// phần này chạy nếu đã tìm đc ví đúng
-			// printf("hiiu---------------while - KeyHunt::FindKeyGPU -------------- \n");
-			ok = g->LaunchSEARCH_MODE_SA(found);
-			for (int i = 0; i < (int)found.size() && !endOfSearch; i++) {
-				ITEM it = found[i];
-					std::string addr = secp->GetAddress(1, it.hash);
-					if (checkPrivKey(addr, keys[it.thId], it.incr)) {
-						nbFoundKey++;
-					}
+	while (ok && !endOfSearch) { // if found right key --> run inside
+		ok = g->LaunchSEARCH_MODE_SA(found);
+		for (int i = 0; i < (int)found.size() && !endOfSearch; i++) {
+			printf("\n -------test -----");
+			ITEM it = found[i];
+				std::string addr = secp->GetAddress(1, it.hash);
+				if (checkPrivKey(addr, keys[it.thId], it.incr)) {	nbFoundKey++;	}
 		}
 
 		if (ok) {
@@ -341,27 +267,22 @@ bool KeyHunt::isAlive(TH_PARAM * p)
 
 bool KeyHunt::hasStarted(TH_PARAM * p)
 {
-	// printf("==============> 14 <============ keyhunt.cpp\n");
-
 	bool hasStarted = true;
 	int total = nbGPUThread;
 	for (int i = 0; i < total; i++)
 		hasStarted = hasStarted && p[i].hasStarted;
 
 	return hasStarted;
-
 }
 
 // ----------------------------------------------------------------------------
 
 uint64_t KeyHunt::getGPUCount()
 {
-	// printf("==============> 15 <============ keyhunt.cpp\n");
 	uint64_t count = 0;
 	for (int i = 0; i < nbGPUThread; i++)
 		count += counters[0x80L + i];
 	return count;
-
 }
 
 // ----------------------------------------------------------------------------
@@ -375,17 +296,14 @@ void KeyHunt::SetupRanges(uint32_t totalThreads)
 	rangeDiff.Set(&rangeEnd);
 	rangeDiff.Sub(&rangeStart);
 	rangeDiff.Div(&threads);
-
-	// printf("-----keyhunt.cpp---rangeDiff :%d\n", rangeDiff); //result: 0
 }
 
 // ----------------------------------------------------------------------------
 void KeyHunt::Search(std::vector<int> gpuId, std::vector<int> gridSize, bool& should_exit)
 {
-	double t0;
-	double t1;
+	double t0, t1;
 	endOfSearch = false;
-	nbGPUThread = (useGpu ? (int)gpuId.size() : 0);
+	nbGPUThread = (int)gpuId.size() ;
 	
 	nbFoundKey = 0;
 
@@ -393,9 +311,6 @@ void KeyHunt::Search(std::vector<int> gpuId, std::vector<int> gridSize, bool& sh
 	SetupRanges(nbGPUThread);
 
 	memset(counters, 0, sizeof(counters));
-
-	if (!useGpu)
-		printf("\n");
 
 	TH_PARAM* params = (TH_PARAM*)malloc((nbGPUThread) * sizeof(TH_PARAM));
 	memset(params, 0, (nbGPUThread) * sizeof(TH_PARAM));
@@ -412,10 +327,6 @@ void KeyHunt::Search(std::vector<int> gpuId, std::vector<int> gridSize, bool& sh
 		params[i].rangeStart.Set(&rangeStart);
 		rangeStart.Add(&rangeDiff);
 		params[i].rangeEnd.Set(&rangeStart);
-
-		// printf("-----keyhunt.cpp----rangStart : %d\n", params[i].rangeStart); //result : -1
-		// printf("-----keyhunt.cpp----rangEnd : %d\n", params[i].rangeEnd); //result : 0 
-
 
 		pthread_t thread_id;
 		pthread_create(&thread_id, NULL, &_FindKeyGPU, (void*)(params + (i)));
@@ -492,20 +403,19 @@ void KeyHunt::Search(std::vector<int> gpuId, std::vector<int> gridSize, bool& sh
 
 		if (isAlive(params)) {
 			memset(timeStr, '\0', 256);
-			printf("\r[%s] [CPU+GPU: %.2f Mk/s] [GPU: %.2f Mk/s] [C: %lf %%] [T: %s (%d bit)] [F: %d]  ",
+			printf("\r[%s] [CPU+GPU: %.2f Mk/s] [GPU: %.2f Mk/s] [C: %lf %%] [T: %s (%d bit)]  ",
 				toTimeStr(t1, timeStr),
 				avgKeyRate / 1000000.0,
 				avgGpuKeyRate / 1000000.0,
 				completedPerc,
 				formatThousands(count).c_str(),
-				completedBits,
-				nbFoundKey);
+				completedBits);
 		}
 
 		lastCount = count;
 		lastGPUCount = gpuCount;
 		t0 = t1;
-		if (should_exit || nbFoundKey >= targetCounter || completedPerc > 100.5)
+		if (should_exit || nbFoundKey >= 1 || completedPerc > 100.5)
 			endOfSearch = true;
 	}
 

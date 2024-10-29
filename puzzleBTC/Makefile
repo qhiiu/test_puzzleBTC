@@ -55,4 +55,8 @@ clean:
 	@rm -d obj/hash 
 	@rm -d obj
 	@rm -f puzzleBTC
+<<<<<<< HEAD
 	@echo Cleaning done
+=======
+	@echo Cleaning done
+>>>>>>> ba35168e905b1ab3b389766f458ea04ad34b4f12

@@ -255,6 +255,11 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
     int solved_P[14] = {66, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130};
 
     //check P
+    if (P < 67 || 160 < P) {
+        printf("\n\n\n\n----- !! P = %lu invalid !! ----- try other P \n\n\n\n", P);
+        exit(-1);
+    }
+    
     for (int i = 0; i < (sizeof(solved_P) / sizeof(solved_P[0])); ++i) {
         if (solved_P[i] == P) {
             printf("\n\n\n\n----- !! P = %lu solved !! ----- try other P \n\n\n\n", P);
@@ -262,7 +267,7 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
         }
     }
 
-    address = list_addr[P]; // --------1
+    address = list_addr[P]; 
 
     // generate Priv_dec + addr + range
 	Int max;

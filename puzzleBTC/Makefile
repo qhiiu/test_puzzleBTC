@@ -54,5 +54,5 @@ clean:
 	@rm -d obj/GPU 
 	@rm -d obj/hash 
 	@rm -d obj
-	@rm -f k.exe
+	@rm -f puzzleBTC
 	@echo Cleaning done

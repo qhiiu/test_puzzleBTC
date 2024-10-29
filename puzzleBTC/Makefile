@@ -5,7 +5,7 @@ OBJDIR = obj
 OBJET = $(addprefix $(OBJDIR)/, \
         Base58.o IntGroup.o Main.o Random.o Timer.o Int.o \
         IntMod.o Point.o SECP256K1.o KeyHunt.o \
-        hash/ripemd160.o hash/sha256.o hash/sha512.o \
+        hash/ripemd160.o hash/sha256.o \
         hash/ripemd160_sse.o hash/sha256_sse.o hash/keccak160.o \
         GPU/GPUEngine.o GmpUtil.o )
 
@@ -55,8 +55,4 @@ clean:
 	@rm -d obj/hash 
 	@rm -d obj
 	@rm -f puzzleBTC
-<<<<<<< HEAD
 	@echo Cleaning done
-=======
-	@echo Cleaning done
->>>>>>> ba35168e905b1ab3b389766f458ea04ad34b4f12

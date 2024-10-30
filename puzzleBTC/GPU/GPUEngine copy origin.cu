@@ -40,27 +40,23 @@ __device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t inc
 
 	uint32_t tid = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-	if(_h[0] == hash160[0]) {
-		if(_h[1] == hash160[1]){
-			if(_h[2] == hash160[2]){
-				if(_h[3] == hash160[3]){
-					if(_h[4] == hash160[4]){			
-					
-						uint32_t pos = atomicAdd(out_found, 1);
-					
-						if (pos < 1) {
-							out_found[pos * ITEM_SIZE_A32 + 1] = tid;
-							// out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
-							out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16);// | (uint32_t)(endo);
-							out_found[pos * ITEM_SIZE_A32 + 3] = _h[0];
-							out_found[pos * ITEM_SIZE_A32 + 4] = _h[1];
-							out_found[pos * ITEM_SIZE_A32 + 5] = _h[2];
-							out_found[pos * ITEM_SIZE_A32 + 6] = _h[3]; 
-							out_found[pos * ITEM_SIZE_A32 + 7] = _h[4];	
-						}
-					}	
-				}	
-			}	
+	if (_h[0] == hash160[0] &&
+		_h[1] == hash160[1] &&
+		_h[2] == hash160[2] &&
+		_h[3] == hash160[3] &&
+		_h[4] == hash160[4] 
+	) {
+  		uint32_t pos = atomicAdd(out_found, 1);
+	
+		if (pos < 1) {
+			out_found[pos * ITEM_SIZE_A32 + 1] = tid;
+			// out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
+			out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16);// | (uint32_t)(endo);
+			out_found[pos * ITEM_SIZE_A32 + 3] = _h[0];
+			out_found[pos * ITEM_SIZE_A32 + 4] = _h[1];
+			out_found[pos * ITEM_SIZE_A32 + 5] = _h[2];
+			out_found[pos * ITEM_SIZE_A32 + 6] = _h[3]; 
+			out_found[pos * ITEM_SIZE_A32 + 7] = _h[4];
 		}
 	}
 }

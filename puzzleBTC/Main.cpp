@@ -13,13 +13,12 @@
 using namespace std;
 
 //-----------------------------------------------------------------------
-
 void CtrlHandler(int signum) {
 	printf("\nBYE");
 	printf("\nBYE\n\n");
 	exit(signum);
 }
-
+//-----------------------------------------------------------------------
 void check_file_exist(){
 	FILE* file;
     file = fopen("$.txt", "r");
@@ -28,9 +27,7 @@ void check_file_exist(){
         exit(-1);   
     }
 }
-
 //-----------------------------------------------------------------------
-
 uint64_t check_data(uint64_t P, std::string priv)
 {
     std::string fileName;
@@ -53,9 +50,7 @@ uint64_t check_data(uint64_t P, std::string priv)
     }   else {   cout << "Err file !!!" << endl;   }
 	return n;
 }
-
 //-----------------------------------------------------------------------
-
 void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int& rangeStart, Int& rangeEnd)
 {
 	std::cout<< "===================================================\n";   
@@ -261,7 +256,7 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
     }
     
     for (int i = 0; i < (sizeof(solved_P) / sizeof(solved_P[0])); ++i) {
-        if (solved_P[i] == P) {
+        if (P == solved_P[i]) {
             printf("\n\n\n\n----- !! P = %lu solved !! ----- try other P \n\n\n\n", P);
             exit(-1);
         }
@@ -309,9 +304,7 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
     } 
     std::cout << "\n\nnChecked : " << nChecked ;
 }
-
 //-----------------------------------------------------------------------
-
 void run(uint64_t P, uint64_t xN){
     
     check_file_exist(); // check file $.txt
@@ -329,6 +322,7 @@ void run(uint64_t P, uint64_t xN){
     std::string address = "";
 	Int priv_dec, rangeStart, rangeEnd;
 
+    //set value
     init_value(P, xN, address, priv_dec, rangeStart, rangeEnd);
 
 	std::string outputFile = "$.txt";
@@ -367,15 +361,16 @@ int main(){
             // ----- input P-xN-sleepTime -------
             // std::cout <<"nhập P = "; std::cin >> P ; std::cout << std::endl;
             // std::cout <<"nhập xN = "; std::cin >> xN ; std::cout << std::endl;
-            std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;  
+            std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;
 
 	for (int i = 0; i < 9999; i++)
 	{
 		std::cout << "\n-- sleep : "<< sleepTime << " s" << std::endl; 
 		run(P, xN);
 		
-        // sleep time --- print coutdown
-        for (int j = sleepTime; j >= 0; j--){
+        // coutdown sleeptime
+        for (int j = sleepTime; j >= 0; j--)
+        {
             sleep(1);   
             printf("----->  %d s  <-----",j);
             fflush(stdout);

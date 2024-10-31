@@ -30,34 +30,31 @@ __device__ uint64_t* Gy = NULL;
 
 // ---------------------------------------------------------------------------------------
 
-__device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t incr,
-	uint32_t* hash160, uint32_t* out_found)
+__device__ __noinline__ void Check__Hash(uint64_t* px, uint64_t* py, int32_t incr, uint32_t* hash160, uint32_t* out_found)
 {	
 	uint8_t isOdd = py[0] & 1; // 
 	uint32_t _h[5];  
 
-	_GetHash160Comp(px, isOdd, (uint8_t*)_h);  //---------- h = _h đây 
+	_GetHash160Comp(px, isOdd, (uint8_t*)_h); 
 
-	uint32_t tid = (blockIdx.x * blockDim.x) + threadIdx.x;
 
 	if(_h[0] == hash160[0]) {
 		if(_h[1] == hash160[1]){
 			if(_h[2] == hash160[2]){
 				if(_h[3] == hash160[3]){
 					if(_h[4] == hash160[4]){			
-					
-						uint32_t pos = atomicAdd(out_found, 1);
-					
-						if (pos < 1) {
-							out_found[pos * ITEM_SIZE_A32 + 1] = tid;
-							// out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16) | (uint32_t)(mode << 15);// | (uint32_t)(endo);
-							out_found[pos * ITEM_SIZE_A32 + 2] = (uint32_t)(incr << 16);// | (uint32_t)(endo);
-							out_found[pos * ITEM_SIZE_A32 + 3] = _h[0];
-							out_found[pos * ITEM_SIZE_A32 + 4] = _h[1];
-							out_found[pos * ITEM_SIZE_A32 + 5] = _h[2];
-							out_found[pos * ITEM_SIZE_A32 + 6] = _h[3]; 
-							out_found[pos * ITEM_SIZE_A32 + 7] = _h[4];	
-						}
+
+						uint32_t tid = (blockIdx.x * blockDim.x) + threadIdx.x;			
+
+						atomicAdd(out_found, 1);
+						out_found[1] = tid;
+						out_found[2] = (uint32_t)(incr << 16);
+						out_found[3] = _h[0];
+						out_found[4] = _h[1];
+						out_found[5] = _h[2];
+						out_found[6] = _h[3]; 
+						out_found[7] = _h[4];	
+
 					}	
 				}	
 			}	
@@ -93,14 +90,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 	uint64_t* starty = __inputKey + yPtr;
 
 	uint64_t dx[GRP_SIZE / 2 + 1][4];  //mảng để lưu giá trị delta x.
-	uint64_t px[4]; 
-	uint64_t py[4];
-	uint64_t pyn[4];
-	uint64_t sx[4];
-	uint64_t sy[4];
-	uint64_t dy[4];
-	uint64_t _s[4];
-	uint64_t _p[4]; //mảng để lưu các giá trị tạm thời.
+	uint64_t px[4], py[4], pyn[4], sx[4], sy[4], dy[4], _s[4], _p[4]; 
 
 
 	// Load starting key
@@ -125,7 +115,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 
 	// Check starting point
 	CHECK__HASH(GRP_SIZE / 2); //GRP_SIZE = 1024*2  //  điểm khởi đầu.
-	//-------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
+	// Check__Hash(px, py, GRP_SIZE / 2, hash160, out_found)	//-------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 	
 	ModNeg256(pyn, py);  // Tính giá trị âm của py
 
@@ -150,7 +140,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 				//-----------------------------------
  
 		CHECK__HASH(GRP_SIZE / 2 + (i + 1));    
-		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
+		// Check__Hash(px, py, GRP_SIZE / 2 + (i + 1), hash160, out_found)		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 
 		// P = StartPoint - i*G, if (x,y) = i*G then (x,-y) = -i*G
 		Load256(px, sx);   
@@ -168,7 +158,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 				//-----------------------------------
 
 		CHECK__HASH(GRP_SIZE / 2 - (i + 1));   
-		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
+		// Check__Hash(px, py, GRP_SIZE / 2 - (i + 1), hash160, out_found)		//------CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 	}
 
 	// First point (startP - (GRP_SZIE/2)*G)
@@ -189,7 +179,7 @@ __global__ void compute_keys_comp_mode_sa(uint32_t* hash160, uint64_t* __inputKe
 
 	
 	CHECK__HASH(0);   //Kiểm tra hash cho điểm cuối cùng.
-	//CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
+	// Check__Hash(px, py, 0, hash160, out_found);	//CHECK__HASH(incr) Check__Hash(px, py, incr, hash160, out_found)
 	i++;
 
 	// Next start point (startP +  *G) m //Cuối cùng, các giá trị x và y mới được lưu trở lại startx và starty
@@ -314,7 +304,6 @@ GPUEngine::GPUEngine(Secp256K1* secp, int nbThreadGroup, int nbThreadPerGroup, i
 	CudaSafeCall(cudaGetLastError());
 
 	initialised = true;
-
 }
 
 // ----------------------------------------------------------------------------
@@ -515,8 +504,6 @@ bool GPUEngine::LaunchSEARCH_MODE_SA(std::vector<ITEM>& dataFound)
 		ITEM it;
 		it.thId = itemPtr[0];
 		int16_t* ptr = (int16_t*)&(itemPtr[1]);
-		//it.endo = ptr[0] & 0x7FFF;
-		// it.mode = (ptr[0] & 0x8000) != 0;
 		it.incr = ptr[1];  
 		it.hash = (uint8_t*)(itemPtr + 2);
 		dataFound.push_back(it);

@@ -12,6 +12,9 @@
 
 using namespace std;
 
+#define RANDOM 0
+#define INPUT 1
+
 //-----------------------------------------------------------------------
 void CtrlHandler(int signum) {
 	printf("\nBYE");
@@ -51,7 +54,7 @@ uint64_t check_data(uint64_t P, std::string priv)
 	return n;
 }
 //-----------------------------------------------------------------------
-void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int& rangeStart, Int& rangeEnd)
+void init_value(int mode, uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int& rangeStart, Int& rangeEnd)
 {
 	std::cout<< "===================================================\n";   
 
@@ -265,12 +268,34 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
     address = list_addr[P]; 
 
     // generate Priv_dec + addr + range
-	Int max;
-    max.SetBase10(list_range_dec[P]);
+	Int rStart_priv_dec, rEnd_priv_dec;
+    rStart_priv_dec.SetBase10(list_range_dec[P]);
+    rEnd_priv_dec.SetBase10(list_range_dec[P+1]);
 
-    priv_dec.Rand(&max);
-    priv_dec.Add(&max);
+    switch (mode){
+        case RANDOM:
+            priv_dec.Rand(&rStart_priv_dec);
+            priv_dec.Add(&rStart_priv_dec);
+            break;
 
+        case INPUT:
+            std::cout << "\nRANGE__INPUT : " << rStart_priv_dec.GetBase10() << " - " << rEnd_priv_dec.GetBase10();
+            char* input_priv_dec = new char[100];
+
+            while (true)
+            {
+                std::cout << "\ninput__priv_dec : "; 
+                cin.getline(input_priv_dec, 100);
+
+                priv_dec.SetBase10(input_priv_dec);     
+
+                if (priv_dec.IsGreaterOrEqual(&rStart_priv_dec) && 
+                    priv_dec.IsLowerOrEqual(&rEnd_priv_dec)){ 
+                        break; 
+                }
+            }
+    }
+    
     Int _10B, _xNB;
     _10B.SetBase10("10000000000"); 
     _xNB = _10B;
@@ -305,7 +330,7 @@ void init_value(uint64_t P, uint64_t xN, std::string& address,Int& priv_dec, Int
     std::cout << "\n\nnChecked : " << nChecked ;
 }
 //-----------------------------------------------------------------------
-void run(uint64_t P, uint64_t xN){
+void run(int mode, uint64_t P, uint64_t xN){
     
     check_file_exist(); // check file $.txt
 
@@ -323,7 +348,7 @@ void run(uint64_t P, uint64_t xN){
 	Int priv_dec, rangeStart, rangeEnd;
 
     //set value
-    init_value(P, xN, address, priv_dec, rangeStart, rangeEnd);
+    init_value(mode, P, xN, address, priv_dec, rangeStart, rangeEnd);
 
 	std::string outputFile = "$.txt";
     std::cout << "\n\nOUTPUT FILE  : " << outputFile;
@@ -352,21 +377,24 @@ void run(uint64_t P, uint64_t xN){
 	delete v;
 };
 
+
 int main(){
     
+    int mode = RANDOM;
+    // int mode = INPUT;
 	uint64_t P = 67;
 	uint64_t xN = 1;
-	int sleepTime = 10;
+	int sleepTime = 5;
 
             // ----- input P-xN-sleepTime -------
             // std::cout <<"nhập P = "; std::cin >> P ; std::cout << std::endl;
             // std::cout <<"nhập xN = "; std::cin >> xN ; std::cout << std::endl;
-            std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;
+            // std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;
 
 	for (int i = 0; i < 9999; i++)
 	{
 		std::cout << "\n-- sleep : "<< sleepTime << " s" << std::endl; 
-		run(P, xN);
+		run(mode, P, xN);
 		
         // coutdown sleeptime
         for (int j = sleepTime; j >= 0; j--)

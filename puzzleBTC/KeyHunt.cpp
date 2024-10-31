@@ -85,6 +85,7 @@ KeyHunt::~KeyHunt()
     for (int i = 0; i < this->xN; i++) // loop to save each priv_dec 
     {
         saveData <<"\n"<< priv_dec_copy.GetBase10(); // write data into file
+		std::cout << "\nsaved : "<< priv_dec_copy.GetBase10();
         priv_dec_copy.AddOne(); 
     }
 
@@ -139,7 +140,6 @@ void KeyHunt::output(std::string addr, std::string pAddr, std::string pAddrHex, 
 
 bool KeyHunt::checkPrivKey(std::string addr, Int& key, int32_t incr)
 {
-	printf("\n------test 2 ");
 	Int k(&key), k2(&key);
 	k.Add((uint64_t)incr);
 	k2.Add((uint64_t)incr);
@@ -229,7 +229,6 @@ void KeyHunt::FindKeyGPU(TH_PARAM * ph)
 	while (ok && !endOfSearch) { // if found right key --> run inside
 		ok = g->LaunchSEARCH_MODE_SA(found);
 		for (int i = 0; i < (int)found.size() && !endOfSearch; i++) {
-			printf("\n -------test -----");
 			ITEM it = found[i];
 				std::string addr = secp->GetAddress(1, it.hash);
 				if (checkPrivKey(addr, keys[it.thId], it.incr)) {	nbFoundKey++;	}

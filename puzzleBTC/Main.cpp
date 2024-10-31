@@ -26,7 +26,9 @@ void check_file_exist(){
 	FILE* file;
     file = fopen("$.txt", "r");
     if (file!=NULL)  {   
-        std::cout << "$.txt exists ======$$$$======" << std::endl; 
+        printf("\n $.txt exists ======$$$$====== \n");
+    	printf("\n.\n.\n.\n.\n.\n --- DONE !! check and take money !! ---- \n.\n.\n.\n.\n.\n.\n");
+
         exit(-1);   
     }
 }
@@ -50,7 +52,7 @@ uint64_t check_data(uint64_t P, std::string priv)
         }
 
         file.close();
-    }   else {   cout << "Err file !!!" << endl;   }
+    } else {   cout << "Err file !!!" << endl;   }
 	return n;
 }
 //-----------------------------------------------------------------------
@@ -382,23 +384,22 @@ int main(){
     
     int mode = RANDOM;
     // int mode = INPUT;
+
 	uint64_t P = 67;
 	uint64_t xN = 1;
 	int sleepTime = 5;
 
-            // ----- input P-xN-sleepTime -------
-            // std::cout <<"nhập P = "; std::cin >> P ; std::cout << std::endl;
-            // std::cout <<"nhập xN = "; std::cin >> xN ; std::cout << std::endl;
-            // std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;
+    // ----- input P-xN-sleepTime -------
+    // std::cout <<"nhập P = "; std::cin >> P ; std::cout << std::endl;
+    // std::cout <<"nhập xN = "; std::cin >> xN ; std::cout << std::endl;
+    // std::cout << "sleepTime xT : "; std::cin >> sleepTime; std::cout<< endl;
 
-	for (int i = 0; i < 9999; i++)
-	{
+	for (int i = 0; i < 9999; i++)	{
 		std::cout << "\n-- sleep : "<< sleepTime << " s" << std::endl; 
 		run(mode, P, xN);
 		
         // coutdown sleeptime
-        for (int j = sleepTime; j >= 0; j--)
-        {
+        for (int j = sleepTime; j >= 0; j--)        {
             sleep(1);   
             printf("----->  %d s  <-----",j);
             fflush(stdout);

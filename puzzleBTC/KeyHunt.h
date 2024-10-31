@@ -9,7 +9,7 @@
 #include <Windows.h>
 #endif
 
-#define CPU_GRP_SIZE (1024*2)
+#define CPU_GRP_SIZE (2048 * 1)
 
 class KeyHunt;
 

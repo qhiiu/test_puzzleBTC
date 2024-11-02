@@ -276,8 +276,22 @@ void init_value(int mode, uint64_t P, uint64_t xN, std::string& address,Int& pri
 
     switch (mode){
         case RANDOM:
-            priv_dec.Rand(&rStart_priv_dec);
-            priv_dec.Add(&rStart_priv_dec);
+            while (true)
+            {
+                priv_dec.Rand(&rStart_priv_dec);
+                priv_dec.Add(&rStart_priv_dec);
+
+                //--- add d_x int priv_dec
+                Int d_x;
+                d_x.SetBase10("9999999");
+                d_x.Rand(&d_x);
+                priv_dec.Add(&d_x);
+
+                if (priv_dec.IsGreaterOrEqual(&rStart_priv_dec) && 
+                    priv_dec.IsLowerOrEqual(&rEnd_priv_dec)){ 
+                        break; 
+                }
+            }
             break;
 
         case INPUT:
@@ -295,6 +309,7 @@ void init_value(int mode, uint64_t P, uint64_t xN, std::string& address,Int& pri
                     priv_dec.IsLowerOrEqual(&rEnd_priv_dec)){ 
                         break; 
                 }
+                break;
             }
     }
     
